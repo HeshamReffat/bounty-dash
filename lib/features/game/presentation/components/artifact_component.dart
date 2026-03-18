@@ -35,12 +35,12 @@ class ArtifactComponent extends PositionComponent {
     add(_pulseEffect);
   }
 
-  void update_(ArtifactEntity updated) {
+  void updateEntity(ArtifactEntity updated) {
     entity = updated;
-    if (updated.isCollected) {
-      removeFromParent();
-    }
+    if (updated.isCollected) removeFromParent();
   }
+
+  void update_(ArtifactEntity updated) => updateEntity(updated);
 
   @override
   void render(Canvas canvas) {

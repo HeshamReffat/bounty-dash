@@ -60,10 +60,14 @@ class LobbyManager {
 
   void removePlayer(String playerId) {
     final room = getRoomForPlayer(playerId);
-    if (room == null) return;
+    if (room == null) return; // already removed manually (mid-game disconnect)
     room.players.remove(playerId);
-    if (room.players.isEmpty) _rooms.remove(room.code);
+    // Only auto-clean rooms that haven't started yet (lobby phase).
+    if (room.players.isEmpty && !room.started) _rooms.remove(room.code);
   }
+
+  /// Explicitly remove a room once a game has fully ended.
+  void closeRoom(String code) => _rooms.remove(code);
 
   List<Map<String, dynamic>> lobbySnapshot(Room room) => room.players.values
       .map((p) => {'id': p.id, 'role': p.role.name})

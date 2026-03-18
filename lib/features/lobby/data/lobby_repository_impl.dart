@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:bountydash/models/entities.dart';
+import 'package:bountydash/models/ws_message.dart';
 import 'package:bountydash/network/ws_client.dart';
 import 'package:bountydash/features/lobby/domain/repositories/lobby_repository.dart';
 
@@ -19,37 +20,36 @@ class LobbyRepositoryImpl implements LobbyRepository {
     _ws.messages.listen(_handleMessage);
   }
 
-  void _handleMessage(Map<String, dynamic> msg) {
-    final type = msg['type'] as String? ?? '';
-    switch (type) {
-      case 'CONNECTED':
-        _myPlayerId = msg['playerId'] as String?;
-        if (_myPlayerId != null) {
-          _eventController.add(LobbyConnected(playerId: _myPlayerId!));
-        }
-      case 'LOBBY_UPDATE':
-        final players = (msg['players'] as List<dynamic>? ?? [])
-            .map((p) => LobbyPlayerInfo.fromJson(p as Map<String, dynamic>))
+  void _handleMessage(Map<String, dynamic> raw) {
+    final msg = WsMessage.fromJson(raw);
+    switch (msg) {
+      case ConnectedMessage(:final playerId):
+        _myPlayerId = playerId;
+        _eventController.add(LobbyConnected(playerId: playerId));
+
+      case LobbyUpdateMessage(:final roomCode, :final players):
+        final infos = players
+            .map((p) => LobbyPlayerInfo.fromJson(p))
             .toList();
-        _eventController.add(LobbyUpdated(
-          roomCode: msg['roomCode'] as String? ?? '',
-          players: players,
-        ));
-      case 'GAME_START':
+        _eventController.add(LobbyUpdated(roomCode: roomCode, players: infos));
+
+      case GameStartMessage():
         _eventController.add(LobbyGameStarted());
-      case 'PLAYER_LEFT':
-        _eventController.add(
-            LobbyPlayerLeft(playerId: msg['playerId'] as String? ?? ''));
-      case 'ERROR':
-        _eventController
-            .add(LobbyError(message: msg['message'] as String? ?? 'Unknown error'));
+
+      case PlayerLeftMessage(:final playerId):
+        _eventController.add(LobbyPlayerLeft(playerId: playerId));
+
+      case ErrorMessage(:final message):
+        _eventController.add(LobbyError(message: message));
+
+      default:
+        break; // other message types handled by GameRepositoryImpl
     }
   }
 
   @override
   Future<String> createRoom() async {
-    _ws.send({'type': 'CREATE_ROOM'});
-    // roomCode is returned via LOBBY_UPDATE event
+    _ws.send(const CreateRoomMessage().toJson());
     final event = await events
         .where((e) => e is LobbyUpdated)
         .first
@@ -59,12 +59,12 @@ class LobbyRepositoryImpl implements LobbyRepository {
 
   @override
   Future<void> joinRoom(String code) async {
-    _ws.send({'type': 'JOIN_ROOM', 'roomCode': code});
+    _ws.send(JoinRoomMessage(roomCode: code).toJson());
   }
 
   @override
   Future<void> startGame(String code) async {
-    _ws.send({'type': 'START_GAME', 'roomCode': code});
+    _ws.send(StartGameMessage(roomCode: code).toJson());
   }
 
   @override
@@ -72,5 +72,7 @@ class LobbyRepositoryImpl implements LobbyRepository {
 
   String? get myPlayerId => _myPlayerId;
 }
+
+
 
 

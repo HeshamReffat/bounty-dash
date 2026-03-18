@@ -2,10 +2,10 @@
 FROM dart:stable AS build
 
 WORKDIR /app
-COPY pubspec.yaml pubspec.lock ./
+COPY server/pubspec.yaml server/pubspec.lock ./
 RUN dart pub get
 
-COPY . .
+COPY server/ .
 RUN dart compile exe bin/server.dart -o bin/server
 
 # ── Runtime stage ───────────────────────────────────────────────────────────────
@@ -23,4 +23,3 @@ EXPOSE 8080
 EXPOSE 41234/udp
 
 CMD ["/app/bin/server"]
-

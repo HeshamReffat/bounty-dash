@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:bloc/bloc.dart';
 import 'package:bloc_concurrency/bloc_concurrency.dart';
 import '../../domain/use_cases/game_use_cases.dart';
+import '../../../../models/entities.dart';
 import 'game_event.dart';
 import 'game_state.dart';
 
@@ -12,9 +13,11 @@ class GameBloc extends Bloc<GameEvent, GameState> {
   final AttemptTagUseCase _attemptTag;
   final CollectArtifactUseCase _collectArtifact;
 
-  StreamSubscription? _stateSub;
   StreamSubscription? _resultSub;
-  String _localPlayerId = '';
+
+  /// Expose the raw game-state stream so Flame can subscribe directly,
+  /// bypassing BLoC/widget-tree rebuilds entirely for the render path.
+  Stream<GameStateEntity> get gameStateStream => _watchState();
 
   GameBloc({
     required WatchGameStateUseCase watchState,
@@ -34,7 +37,6 @@ class GameBloc extends Bloc<GameEvent, GameState> {
 
     // Standard events
     on<GameStarted>(_onGameStarted);
-    on<GameStateReceived>(_onGameStateReceived);
     on<GameResultReceived>(_onGameResultReceived);
     on<ArtifactCollectRequested>(_onCollect);
     on<TagAttempted>(_onTag);
@@ -42,23 +44,13 @@ class GameBloc extends Bloc<GameEvent, GameState> {
   }
 
   void _onGameStarted(GameStarted event, Emitter<GameState> emit) {
-    _localPlayerId = event.playerId;
     emit(const GameLoading());
 
-    _stateSub = _watchState().listen(
-      (s) => add(GameStateReceived(s)),
-      onError: (e) => add(const GameStopped()),
-    );
+    // Only subscribe to game-OVER results here — game state updates go
+    // directly to Flame without touching the BLoC state machine.
     _resultSub = _watchResult().listen(
       (r) => add(GameResultReceived(r)),
     );
-  }
-
-  void _onGameStateReceived(GameStateReceived event, Emitter<GameState> emit) {
-    emit(GameRunning(
-      gameState: event.state,
-      localPlayerId: _localPlayerId,
-    ));
   }
 
   void _onGameResultReceived(
@@ -66,6 +58,8 @@ class GameBloc extends Bloc<GameEvent, GameState> {
     emit(GameOver(event.result));
   }
 
+  // Input handlers — bypass BLoC event queue and call use-cases directly
+  // to avoid the extra async hop on every frame.
   void _onPlayerMoved(PlayerMoved event, Emitter<GameState> emit) {
     _sendMove(dx: event.dx, dy: event.dy, angle: event.angle);
   }
@@ -83,14 +77,22 @@ class GameBloc extends Bloc<GameEvent, GameState> {
   }
 
   void _onGameStopped(GameStopped event, Emitter<GameState> emit) {
-    _stateSub?.cancel();
     _resultSub?.cancel();
     emit(const GameInitial());
   }
 
+  /// Call from BountyDashGame to send moves without going through the BLoC
+  /// event queue — eliminates the async hop on every Flame update tick.
+  void sendMoveImmediate(
+      {required double dx, required double dy, required double angle}) {
+    _sendMove(dx: dx, dy: dy, angle: angle);
+  }
+
+  void sendTagImmediate() => _attemptTag();
+  void sendCollectImmediate() => _collectArtifact();
+
   @override
   Future<void> close() {
-    _stateSub?.cancel();
     _resultSub?.cancel();
     return super.close();
   }

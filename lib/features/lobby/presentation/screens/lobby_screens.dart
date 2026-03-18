@@ -15,7 +15,7 @@ class LobbyScreen extends StatefulWidget {
 
 class _LobbyScreenState extends State<LobbyScreen> {
   final _codeCtrl = TextEditingController();
-  final _ipCtrl = TextEditingController(text: 'localhost');
+  final _ipCtrl = TextEditingController(text: 'bounty-dash.fly.dev');
   final _lanDiscovery = LanDiscovery();
   final _discoveredIps = <String>[];
 

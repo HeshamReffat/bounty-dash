@@ -181,6 +181,14 @@ class GameResultEntity extends Equatable {
         tagsMade: j['tagsMade'] as int? ?? 0,
       );
 
+  Map<String, dynamic> toJson() => {
+        'winner': winner,
+        'reason': reason,
+        'secondsSurvived': secondsSurvived,
+        'artifactsCollected': artifactsCollected,
+        'tagsMade': tagsMade,
+      };
+
   @override
   List<Object?> get props =>
       [winner, reason, secondsSurvived, artifactsCollected, tagsMade];

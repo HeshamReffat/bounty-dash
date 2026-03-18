@@ -188,6 +188,7 @@ class GameServer {
         tagsMade: runner?.tagCount ?? 0,
       );
       _broadcastToRoom(code, {'type': 'GAME_OVER', 'result': result.toJson()});
+      _lobby.closeRoom(code);
     }
   }
 
@@ -250,12 +251,79 @@ class GameServer {
   }
 
   void _handleDisconnect(String playerId) {
+    // Snapshot room reference BEFORE any removal so it stays valid throughout.
     final room = _lobby.getRoomForPlayer(playerId);
-    if (room != null) {
-      _broadcastToRoom(room.code, {'type': 'PLAYER_LEFT', 'playerId': playerId});
-    }
-    _lobby.removePlayer(playerId);
+
+    // Always remove the socket first so we stop trying to write to a dead pipe.
     _sockets.remove(playerId);
+
+    if (room == null) return;
+    final code = room.code;
+
+    // Notify remaining players that this player left.
+    // Do this before removing from lobby so the room still exists.
+    _broadcastToRoom(code, {'type': 'PLAYER_LEFT', 'playerId': playerId});
+
+    // Remove from lobby player list (but NOT from room map yet — room.players
+    // is still needed by _broadcastState / _broadcastToRoom below).
+    room.players.remove(playerId);
+
+    final engine = _engines[code];
+    if (engine != null) {
+      // Remove from engine state and check win condition.
+      final newState = engine.removePlayer(playerId);
+
+      if (newState.phase == GamePhase.ended) {
+        // Cancel tick loop immediately so no more ticks race with cleanup.
+        _timers[code]?.cancel();
+        _timers.remove(code);
+        _engines.remove(code);
+        _prevRunnerPos.remove(code);
+        _inputBuffer.remove(code);
+
+        final runner = newState.players.values
+            .where((p) => p.role == PlayerRole.runner)
+            .firstOrNull;
+
+        final result = GameResultEntity(
+          winner: newState.winner!,
+          reason: newState.winReason!,
+          secondsSurvived: 180 - newState.secondsRemaining,
+          artifactsCollected:
+              newState.artifacts.where((a) => a.isCollected).length,
+          tagsMade: runner?.tagCount ?? 0,
+        );
+
+        // Send GAME_OVER to all REMAINING players (room.players no longer
+        // contains the disconnected player, so only survivors receive it).
+        // Use _broadcastToPlayers because closeRoom is called right after.
+        _broadcastToPlayers(
+          room.players.keys,
+          {'type': 'GAME_OVER', 'result': result.toJson()},
+        );
+
+        // Now safe to close the room.
+        _lobby.closeRoom(code);
+      } else {
+        // Game continues — broadcast the updated state so the ghost disappears.
+        _broadcastState(code, newState);
+
+        // Clean up empty room if somehow everyone left without ending the game.
+        if (room.players.isEmpty) {
+          _timers[code]?.cancel();
+          _timers.remove(code);
+          _engines.remove(code);
+          _prevRunnerPos.remove(code);
+          _inputBuffer.remove(code);
+          _lobby.closeRoom(code);
+        }
+      }
+    } else {
+      // Game not started yet (lobby disconnect).
+      if (room.players.isEmpty) {
+        _lobby.closeRoom(code);
+      }
+    }
   }
 
   void _broadcastLobby(String code) {
@@ -271,7 +339,15 @@ class GameServer {
   void _broadcastToRoom(String code, Map<String, dynamic> msg) {
     final room = _lobby.getRoom(code);
     if (room == null) return;
-    for (final id in room.players.keys) {
+    // Copy keys so iteration is safe if the map is modified during send.
+    for (final id in List<String>.from(room.players.keys)) {
+      _send(id, msg);
+    }
+  }
+
+  /// Broadcast to an explicit list of player IDs (safe to use after closeRoom).
+  void _broadcastToPlayers(Iterable<String> playerIds, Map<String, dynamic> msg) {
+    for (final id in playerIds) {
       _send(id, msg);
     }
   }

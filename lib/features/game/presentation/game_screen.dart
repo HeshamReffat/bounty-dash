@@ -35,10 +35,7 @@ class _GameScreenState extends State<GameScreen> {
     _flameGame = BountyDashGame(
       localPlayerId: widget.localPlayerId,
       localRole: widget.localRole,
-      onMove: ({required dx, required dy, required angle}) =>
-          _bloc.add(PlayerMoved(dx: dx, dy: dy, angle: angle)),
-      onTag: () => _bloc.add(const TagAttempted()),
-      onCollect: () => _bloc.add(const ArtifactCollectRequested()),
+      bloc: _bloc,
     );
 
     _bloc.add(GameStarted(playerId: widget.localPlayerId));
@@ -49,19 +46,32 @@ class _GameScreenState extends State<GameScreen> {
     return BlocProvider.value(
       value: _bloc,
       child: BlocListener<GameBloc, GameState>(
+        // Only listen for navigation-level events — NOT GameRunning.
+        // Game-state updates flow directly Flame ↔ stream, zero rebuilds.
+        listenWhen: (_, s) => s is GameOver,
         listener: (context, state) {
           if (state is GameOver) {
             context.go('/result', extra: state.result);
-          }
-          if (state is GameRunning) {
-            _flameGame.applyState(state.gameState);
           }
         },
         child: Scaffold(
           backgroundColor: Colors.black,
           body: MouseRegion(
             onHover: (event) => _flameGame.onMouseMove(event.localPosition),
-            child: GameWidget(game: _flameGame),
+            child: Stack(
+              children: [
+                GameWidget(game: _flameGame),
+                Positioned(
+                  right: 24,
+                  bottom: 120,
+                  child: _ActionButtons(
+                    role: widget.localRole,
+                    onCollect: () => _bloc.sendCollectImmediate(),
+                    onTag: () => _bloc.sendTagImmediate(),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -75,4 +85,85 @@ class _GameScreenState extends State<GameScreen> {
   }
 }
 
+// ── Action buttons widget ─────────────────────────────────────────────────────
 
+class _ActionButtons extends StatelessWidget {
+  final PlayerRole role;
+  final VoidCallback onCollect;
+  final VoidCallback onTag;
+
+  const _ActionButtons({
+    required this.role,
+    required this.onCollect,
+    required this.onTag,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (role == PlayerRole.runner)
+          _CircleButton(
+            icon: Icons.star,
+            label: 'COLLECT',
+            color: const Color(0xFF00FFAA),
+            onPressed: onCollect,
+          ),
+        if (role == PlayerRole.guard)
+          _CircleButton(
+            icon: Icons.pan_tool,
+            label: 'TAG',
+            color: const Color(0xFFE53935),
+            onPressed: onTag,
+          ),
+      ],
+    );
+  }
+}
+
+class _CircleButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onPressed;
+
+  const _CircleButton({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        GestureDetector(
+          onTap: onPressed,
+          child: Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: color.withValues(alpha: 0.25),
+              border: Border.all(color: color, width: 3),
+            ),
+            child: Icon(icon, color: color, size: 32),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          label,
+          style: TextStyle(
+            color: color,
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.2,
+          ),
+        ),
+      ],
+    );
+  }
+}

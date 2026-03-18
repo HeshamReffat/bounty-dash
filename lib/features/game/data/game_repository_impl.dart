@@ -1,5 +1,6 @@
 import 'dart:async';
 import '../../../../models/entities.dart';
+import '../../../../models/ws_message.dart';
 import '../../../../network/ws_client.dart';
 import '../domain/repositories/game_repository.dart';
 import 'interpolator.dart';
@@ -19,21 +20,20 @@ class GameRepositoryImpl implements GameRepository {
     _sub = _ws.messages.listen(_handleMessage);
   }
 
-  void _handleMessage(Map<String, dynamic> msg) {
-    final type = msg['type'] as String? ?? '';
-    switch (type) {
-      case 'GAME_STATE':
-        final raw = msg['state'] as Map<String, dynamic>?;
-        if (raw == null) return;
-        final state = GameStateEntity.fromJson(raw);
-        _interpolator.onNewState(state);
+  void _handleMessage(Map<String, dynamic> raw) {
+    final msg = WsMessage.fromJson(raw);
+    switch (msg) {
+      case GameStateMessage(:final state):
+        final entity = GameStateEntity.fromJson(state);
+        _interpolator.onNewState(entity);
         final interpolated = _interpolator.interpolate();
         if (interpolated != null) _stateController.add(interpolated);
 
-      case 'GAME_OVER':
-        final raw = msg['result'] as Map<String, dynamic>?;
-        if (raw == null) return;
-        _resultController.add(GameResultEntity.fromJson(raw));
+      case GameOverMessage(:final result):
+        _resultController.add(GameResultEntity.fromJson(result));
+
+      default:
+        break; // lobby messages handled by LobbyRepositoryImpl
     }
   }
 
@@ -49,14 +49,14 @@ class GameRepositoryImpl implements GameRepository {
     required double dy,
     required double angle,
   }) {
-    _ws.send({'type': 'INPUT', 'dx': dx, 'dy': dy, 'angle': angle});
+    _ws.send(InputMessage(dx: dx, dy: dy, angle: angle).toJson());
   }
 
   @override
-  void sendTag() => _ws.send({'type': 'TAG_ATTEMPT'});
+  void sendTag() => _ws.send(const TagAttemptMessage().toJson());
 
   @override
-  void sendCollect() => _ws.send({'type': 'COLLECT'});
+  void sendCollect() => _ws.send(const CollectMessage().toJson());
 
   @override
   void dispose() {
@@ -65,4 +65,6 @@ class GameRepositoryImpl implements GameRepository {
     _resultController.close();
   }
 }
+
+
 

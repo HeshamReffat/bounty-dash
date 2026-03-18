@@ -186,6 +186,61 @@ class GameEngine {
     return state;
   }
 
+  /// Remove [playerId] from the game state (e.g. disconnected mid-game).
+  /// Returns the updated state which may already be [GamePhase.ended].
+  GameStateEntity removePlayer(String playerId) {
+    if (state.phase != GamePhase.playing) return state;
+
+    final players = Map<String, PlayerEntity>.from(state.players)
+      ..remove(playerId);
+    _prevPositions.remove(playerId);
+
+    // Not enough players to continue?
+    if (players.length < 2) {
+      final remaining = players.values.firstOrNull;
+      final winnerLabel = remaining == null
+          ? 'guards'
+          : (remaining.role == PlayerRole.runner ? 'runner' : 'guards');
+      state = state.copyWith(
+        players: players,
+        phase: GamePhase.ended,
+        winner: winnerLabel,
+        winReason: 'Opponent disconnected',
+        tick: state.tick + 1,
+      );
+      return state;
+    }
+
+    // If the runner disconnected, guards win immediately.
+    final runnerLeft = !players.values.any((p) => p.role == PlayerRole.runner);
+    if (runnerLeft) {
+      state = state.copyWith(
+        players: players,
+        phase: GamePhase.ended,
+        winner: 'guards',
+        winReason: 'Runner disconnected',
+        tick: state.tick + 1,
+      );
+      return state;
+    }
+
+    // If ALL guards disconnected, runner wins immediately.
+    final anyGuard = players.values.any((p) => p.role == PlayerRole.guard);
+    if (!anyGuard) {
+      state = state.copyWith(
+        players: players,
+        phase: GamePhase.ended,
+        winner: 'runner',
+        winReason: 'All guards disconnected',
+        tick: state.tick + 1,
+      );
+      return state;
+    }
+
+    state = state.copyWith(players: players);
+    return state;
+  }
+
   Vec2 _resolveCollision(Vec2 from, Vec2 to) {
     final col = to.x.floor();
     final row = to.y.floor();
