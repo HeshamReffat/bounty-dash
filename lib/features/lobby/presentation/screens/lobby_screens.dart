@@ -44,8 +44,36 @@ class _LobbyScreenState extends State<LobbyScreen> {
   }
 
   String get _serverUrl {
-    final ip = _ipCtrl.text.trim().isEmpty ? 'localhost' : _ipCtrl.text.trim();
-    return 'ws://$ip:8080/ws';
+    final raw = _ipCtrl.text.trim();
+    if (raw.isEmpty) return 'ws://localhost:8080/ws';
+
+    // If user pasted a full URL (ws://, wss://, http://, https://), adapt it.
+    if (raw.contains('://')) {
+      if (raw.startsWith('ws://') || raw.startsWith('wss://')) {
+        return raw.endsWith('/ws') ? raw : raw.replaceAll(RegExp(r'/+\$'), '') + (raw.endsWith('/ws') ? '' : '/ws');
+      }
+      // Convert http(s) to ws(s)
+      if (raw.startsWith('http://')) {
+        final hostOnly = raw.replaceFirst('http://', 'ws://');
+        return hostOnly.endsWith('/ws') ? hostOnly : hostOnly + (hostOnly.endsWith('/') ? 'ws' : '/ws');
+      }
+      if (raw.startsWith('https://')) {
+        final hostOnly = raw.replaceFirst('https://', 'wss://');
+        return hostOnly.endsWith('/ws') ? hostOnly : hostOnly + (hostOnly.endsWith('/') ? 'ws' : '/ws');
+      }
+    }
+
+    // Raw host input (no scheme). Heuristics:
+    // - If looks like localhost or an IP, use ws://host:8080/ws (local dev)
+    // - Otherwise assume a public hostname -> use wss://host/ws (production)
+    final isLocalHost = raw == 'localhost' || raw == '127.0.0.1' || raw.startsWith('192.') || raw.startsWith('10.') || raw.startsWith('172.');
+    final hasPort = raw.contains(':');
+    if (isLocalHost) {
+      return hasPort ? 'ws://$raw/ws' : 'ws://$raw:8080/ws';
+    }
+
+    // For public hostnames, prefer TLS WebSocket without a port
+    return hasPort ? 'wss://$raw/ws' : 'wss://$raw/ws';
   }
 
   @override

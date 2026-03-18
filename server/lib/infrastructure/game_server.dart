@@ -30,6 +30,27 @@ class GameServer {
     // Health check
     router.get('/health', (Request req) => Response.ok('ok'));
 
+    // Root landing page - simple helpful HTML so visiting the app URL doesn't 404
+    router.get('/', (Request req) {
+      final host = req.headers['host'] ?? 'localhost';
+      final scheme = req.headers['x-forwarded-proto'] ?? 'https';
+      final wsScheme = scheme == 'https' ? 'wss' : 'ws';
+      final wsUrl = '$wsScheme://$host/ws';
+      final html = '''
+<!doctype html>
+<html>
+  <head><meta charset="utf-8"><title>Bounty Dash Server</title></head>
+  <body style="font-family:system-ui, sans-serif; padding:24px;">
+    <h1>Bounty Dash — Server</h1>
+    <p>Status: <a href="/health">/health</a></p>
+    <p>WebSocket endpoint: <a href="$wsUrl">$wsUrl</a></p>
+    <p>Note: WebSocket clients should connect to the <code>/ws</code> path using <code>${wsScheme}://${host}/ws</code>.</p>
+  </body>
+</html>
+''';
+      return Response.ok(html, headers: {'content-type': 'text/html'});
+    });
+
     // WebSocket upgrade
     router.get(
       '/ws',
@@ -272,4 +293,3 @@ Future<void> startServer({int port = 8080}) async {
   // ignore: avoid_print
   print('🎮 Bounty Dash server running on ws://0.0.0.0:${httpServer.port}');
 }
-
