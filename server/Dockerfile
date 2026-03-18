@@ -2,10 +2,10 @@
 FROM dart:stable AS build
 
 WORKDIR /app
-COPY server/pubspec.yaml server/pubspec.lock ./
+COPY pubspec.yaml pubspec.lock ./
 RUN dart pub get
 
-COPY server/ .
+COPY . .
 RUN dart compile exe bin/server.dart -o bin/server
 
 # ── Runtime stage ───────────────────────────────────────────────────────────────
