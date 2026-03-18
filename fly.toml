@@ -1,0 +1,23 @@
+app = "bounty-dash-server"
+
+[deploy]
+  release_command = ""
+
+[[services]]
+  internal_port = 8080
+  protocol = "tcp"
+
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+
+  [[services.ports]]
+    port = 8080
+
+  [[services.ports]]
+    port = 41234
+    protocol = "udp"
+
+[env]
+  DISABLE_LAN_BROADCAST = "true"
+
