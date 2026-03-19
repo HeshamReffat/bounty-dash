@@ -174,6 +174,7 @@ class GameResultEntity {
   final String reason;
   final int secondsSurvived;
   final int artifactsCollected;
+  final int totalArtifacts;
   final int tagsMade;
   final int maxTags;
 
@@ -183,6 +184,7 @@ class GameResultEntity {
     required this.secondsSurvived,
     required this.artifactsCollected,
     required this.tagsMade,
+    this.totalArtifacts = 3,
     this.maxTags = 2,
   });
 
@@ -191,6 +193,7 @@ class GameResultEntity {
         'reason': reason,
         'secondsSurvived': secondsSurvived,
         'artifactsCollected': artifactsCollected,
+        'totalArtifacts': totalArtifacts,
         'tagsMade': tagsMade,
         'maxTags': maxTags,
       };
@@ -200,7 +203,9 @@ class GameResultEntity {
         reason: j['reason'] as String,
         secondsSurvived: j['secondsSurvived'] as int,
         artifactsCollected: j['artifactsCollected'] as int,
+        totalArtifacts: j['totalArtifacts'] as int? ?? 3,
         tagsMade: j['tagsMade'] as int,
+        maxTags: j['maxTags'] as int? ?? 2,
       );
 }
 

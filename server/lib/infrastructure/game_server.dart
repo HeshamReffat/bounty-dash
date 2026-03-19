@@ -133,8 +133,9 @@ class GameServer {
 
     final playerCount = room.players.length;
 
-    // Randomly spawn 3 artifacts on floor tiles (never same spot twice)
-    final artifactSpots = randomArtifactPositions(3);
+    // Artifact count: 3 for 2 players, 5 for 3+ players
+    final artifactCount = playerCount <= 2 ? 3 : 5;
+    final artifactSpots = randomArtifactPositions(artifactCount);
     final artifacts = artifactSpots
         .asMap()
         .entries
@@ -193,6 +194,7 @@ class GameServer {
         reason: newState.winReason!,
         secondsSurvived: 180 - newState.secondsRemaining,
         artifactsCollected: newState.artifacts.where((a) => a.isCollected).length,
+        totalArtifacts: newState.artifacts.length,
         tagsMade: runner?.tagCount ?? 0,
         maxTags: newState.maxTags,
       );
@@ -301,6 +303,7 @@ class GameServer {
           secondsSurvived: 180 - newState.secondsRemaining,
           artifactsCollected:
               newState.artifacts.where((a) => a.isCollected).length,
+          totalArtifacts: newState.artifacts.length,
           tagsMade: runner?.tagCount ?? 0,
           maxTags: newState.maxTags,
         );

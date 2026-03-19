@@ -79,7 +79,7 @@ class _GameOverView extends StatelessWidget {
                       _StatRow(
                           icon: '💎',
                           label: 'Artifacts Collected',
-                          value: '${r.artifactsCollected}/3'),
+                          value: '${r.artifactsCollected}/${r.totalArtifacts}'),
                       _StatRow(
                           icon: '🎯',
                           label: 'Tags Made',

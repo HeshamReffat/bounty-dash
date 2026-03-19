@@ -166,6 +166,7 @@ class GameResultEntity extends Equatable {
   final String reason;
   final int secondsSurvived;
   final int artifactsCollected;
+  final int totalArtifacts;
   final int tagsMade;
   final int maxTags;
 
@@ -175,6 +176,7 @@ class GameResultEntity extends Equatable {
     required this.secondsSurvived,
     required this.artifactsCollected,
     required this.tagsMade,
+    this.totalArtifacts = 3,
     this.maxTags = 2,
   });
 
@@ -183,6 +185,7 @@ class GameResultEntity extends Equatable {
         reason: j['reason'] as String,
         secondsSurvived: j['secondsSurvived'] as int? ?? 0,
         artifactsCollected: j['artifactsCollected'] as int? ?? 0,
+        totalArtifacts: j['totalArtifacts'] as int? ?? 3,
         tagsMade: j['tagsMade'] as int? ?? 0,
         maxTags: j['maxTags'] as int? ?? 2,
       );
@@ -192,13 +195,14 @@ class GameResultEntity extends Equatable {
         'reason': reason,
         'secondsSurvived': secondsSurvived,
         'artifactsCollected': artifactsCollected,
+        'totalArtifacts': totalArtifacts,
         'tagsMade': tagsMade,
         'maxTags': maxTags,
       };
 
   @override
   List<Object?> get props =>
-      [winner, reason, secondsSurvived, artifactsCollected, tagsMade, maxTags];
+      [winner, reason, secondsSurvived, artifactsCollected, totalArtifacts, tagsMade, maxTags];
 }
 
 class LobbyPlayerInfo extends Equatable {

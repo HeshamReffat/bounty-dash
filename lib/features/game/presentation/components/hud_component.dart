@@ -65,11 +65,13 @@ class HudComponent extends PositionComponent {
       _drawHeart(canvas, Offset(16 + i * 32.0, 12), filled);
     }
 
-    // Artifact icons
+    // Artifact icons — dynamic count from server
     final collected = gameState!.artifacts.where((a) => a.isCollected).length;
-    for (int i = 0; i < 3; i++) {
+    final totalArtifacts = gameState!.artifacts.length;
+    final artifactStartX = _vpWidth - 20 - (totalArtifacts * 22.0);
+    for (int i = 0; i < totalArtifacts; i++) {
       canvas.drawRect(
-        Rect.fromLTWH(820 + i * 22.0, 14, 14, 20),
+        Rect.fromLTWH(artifactStartX + i * 22.0, 14, 14, 20),
         i < collected ? _artifactFull : _artifactEmpty,
       );
     }
