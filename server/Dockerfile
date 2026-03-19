@@ -2,10 +2,14 @@
 FROM dart:stable AS build
 
 WORKDIR /app
+
+# Copy pubspec files and resolve dependencies
 COPY pubspec.yaml pubspec.lock ./
 RUN dart pub get
 
-COPY . .
+# Copy source code and compile
+COPY bin/ bin/
+COPY lib/ lib/
 RUN dart compile exe bin/server.dart -o bin/server
 
 # ── Runtime stage ───────────────────────────────────────────────────────────────
