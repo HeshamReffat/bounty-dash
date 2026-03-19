@@ -5,8 +5,8 @@ import '../domain/visibility_engine.dart';
 import '../domain/tag_system.dart';
 import '../domain/artifact_system.dart';
 
-const double kRunnerSpeed = 3.0; // tiles/sec
-const double kGuardSpeed  = 2.0; // tiles/sec
+const double kRunnerSpeed = 3.8; // tiles/sec
+const double kGuardSpeed  = 2.6; // tiles/sec
 const double kTickRate    = 1 / 20; // 50 ms per tick
 
 /// Input snapshot received from a client each tick.

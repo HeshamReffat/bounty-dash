@@ -35,6 +35,7 @@ class BountyDashGame extends FlameGame
   // Keyboard state
   final _keysDown = <LogicalKeyboardKey>{};
   double _facingAngle = 0;
+  bool _spaceWasDown = false; // edge-detect: fire action once per press
 
   // World
   World? _world;
@@ -236,11 +237,6 @@ class BountyDashGame extends FlameGame
           _keysDown.contains(LogicalKeyboardKey.arrowLeft)) { targetDx = -1; }
       if (_keysDown.contains(LogicalKeyboardKey.keyD) ||
           _keysDown.contains(LogicalKeyboardKey.arrowRight)) { targetDx = 1; }
-
-      if (_keysDown.contains(LogicalKeyboardKey.space)) {
-        if (localRole == PlayerRole.guard) { bloc.sendTagImmediate(); }
-        if (localRole == PlayerRole.runner) { bloc.sendCollectImmediate(); }
-      }
     }
 
     // ── Smooth ramp toward target (acceleration / deceleration) ────────────
@@ -284,6 +280,15 @@ class BountyDashGame extends FlameGame
     _keysDown
       ..clear()
       ..addAll(keysPressed);
+
+    // Space bar: edge-detect so action fires exactly once per press.
+    final spaceIsDown = keysPressed.contains(LogicalKeyboardKey.space);
+    if (spaceIsDown && !_spaceWasDown) {
+      if (localRole == PlayerRole.guard) { bloc.sendTagImmediate(); }
+      if (localRole == PlayerRole.runner) { bloc.sendCollectImmediate(); }
+    }
+    _spaceWasDown = spaceIsDown;
+
     return KeyEventResult.handled;
   }
 
@@ -301,9 +306,20 @@ class BountyDashGame extends FlameGame
     _facingAngle = math.atan2(worldPos.y - gPos.y, worldPos.x - gPos.x);
   }
 
-  // ── Tap passthrough ───────────────────────────────────────────────────────
+  // ── Tap / click on game canvas (desktop) ────────────────────────────────
   @override
-  void onTapDown(TapDownEvent event) {}
+  void onTapDown(TapDownEvent event) {
+    // On desktop, clicking acts as the action button (tag or collect).
+    if (defaultTargetPlatform == TargetPlatform.macOS ||
+        defaultTargetPlatform == TargetPlatform.windows ||
+        defaultTargetPlatform == TargetPlatform.linux) {
+      if (localRole == PlayerRole.guard) {
+        bloc.sendTagImmediate();
+      } else if (localRole == PlayerRole.runner) {
+        bloc.sendCollectImmediate();
+      }
+    }
+  }
 
   /// Smoothly ramp [current] toward [target] using acceleration/deceleration.
   double _ramp(double current, double target, double dt) {
