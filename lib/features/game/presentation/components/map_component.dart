@@ -4,8 +4,10 @@ import '../../../game/domain/map_data.dart';
 
 class MapComponent extends Component with HasGameReference {
   static final _wallPaint = Paint()..color = const Color(0xFF2C2C3A);
+  static final _wallInnerPaint = Paint()..color = const Color(0xFF1A1A26);
   static final _floorPaint = Paint()..color = const Color(0xFF3E3E52);
   static final _exitPaint = Paint()..color = const Color(0xFFFFD700);
+  static final _exitInnerPaint = Paint()..color = const Color(0xFFFFEA00);
   static final _artifactFloorPaint = Paint()..color = const Color(0xFF1A6B6B);
 
   @override
@@ -22,17 +24,10 @@ class MapComponent extends Component with HasGameReference {
         switch (tile) {
           case tWall:
             canvas.drawRect(rect, _wallPaint);
-            // Inner highlight for 3D feel
-            canvas.drawRect(
-              rect.deflate(2),
-              Paint()..color = const Color(0xFF1A1A26),
-            );
+            canvas.drawRect(rect.deflate(2), _wallInnerPaint);
           case tExit:
             canvas.drawRect(rect, _exitPaint);
-            canvas.drawRect(
-              rect.deflate(3),
-              Paint()..color = const Color(0xFFFFEA00),
-            );
+            canvas.drawRect(rect.deflate(3), _exitInnerPaint);
           case tArtifact:
             canvas.drawRect(rect, _artifactFloorPaint);
           default:

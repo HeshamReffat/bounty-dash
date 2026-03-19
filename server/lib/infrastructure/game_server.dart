@@ -192,7 +192,7 @@ class GameServer {
       final result = GameResultEntity(
         winner: newState.winner!,
         reason: newState.winReason!,
-        secondsSurvived: 180 - newState.secondsRemaining,
+        secondsSurvived: 600 - newState.secondsRemaining,
         artifactsCollected: newState.artifacts.where((a) => a.isCollected).length,
         totalArtifacts: newState.artifacts.length,
         tagsMade: runner?.tagCount ?? 0,
@@ -300,7 +300,7 @@ class GameServer {
         final result = GameResultEntity(
           winner: newState.winner!,
           reason: newState.winReason!,
-          secondsSurvived: 180 - newState.secondsRemaining,
+          secondsSurvived: 600 - newState.secondsRemaining,
           artifactsCollected:
               newState.artifacts.where((a) => a.isCollected).length,
           totalArtifacts: newState.artifacts.length,

@@ -37,8 +37,8 @@ class BountyDashGame extends FlameGame
   double _facingAngle = 0;
 
   // World
-  late final World _world;
-  late final CameraComponent _camera;
+  World? _world;
+  CameraComponent? _camera;
 
   // Server-state stream subscription (bypasses widget tree)
   StreamSubscription<GameStateEntity>? _stateSub;
@@ -60,6 +60,9 @@ class BountyDashGame extends FlameGame
   double _sendAccum = 0;
   static const double _sendInterval = 0.05; // seconds between input packets
 
+  // Pending screen size for zoom — set if onGameResize fires before onLoad
+  Vector2? _pendingSize;
+
   BountyDashGame({
     required this.localPlayerId,
     required this.localRole,
@@ -70,22 +73,38 @@ class BountyDashGame extends FlameGame
   Color backgroundColor() => const Color(0xFF1A1A26);
 
   @override
-  Future<void> onLoad() async {
-    _world = World();
-    _camera = CameraComponent.withFixedResolution(
-      world: _world,
-      width: 900,
-      height: 600,
-    );
-    addAll([_world, _camera]);
+  void onGameResize(Vector2 size) {
+    super.onGameResize(size);
+    final cam = _camera;
+    if (cam == null) {
+      // onLoad hasn't run yet — stash the size and apply zoom later.
+      _pendingSize = size.clone();
+      return;
+    }
+    _applyZoom(cam, size);
+  }
 
-    _world.add(MapComponent());
+  void _applyZoom(CameraComponent cam, Vector2 size) {
+    final tilesVisible = size.x < 700 ? 18.0 : 26.0;
+    final desiredZoom = size.x / (tilesVisible * kTileSize);
+    cam.viewfinder.zoom = desiredZoom.clamp(0.8, 3.0);
+  }
+
+  @override
+  Future<void> onLoad() async {
+    final world = World();
+    final camera = CameraComponent(world: world);
+    _world = world;
+    _camera = camera;
+    addAll([world, camera]);
+
+    world.add(MapComponent());
 
     _hud = HudComponent(
       localPlayerId: localPlayerId,
       localRole: localRole,
     );
-    _camera.viewport.add(_hud);
+    camera.viewport.add(_hud);
 
     // Mobile joystick
     if (defaultTargetPlatform == TargetPlatform.android ||
@@ -101,7 +120,13 @@ class BountyDashGame extends FlameGame
         ),
         margin: const EdgeInsets.only(left: 40, bottom: 40),
       );
-      _camera.viewport.add(_joystick!);
+      camera.viewport.add(_joystick!);
+    }
+
+    // Apply pending zoom if onGameResize fired before onLoad
+    if (_pendingSize != null) {
+      _applyZoom(camera, _pendingSize!);
+      _pendingSize = null;
     }
 
     // Subscribe to server state stream DIRECTLY inside Flame —
@@ -111,6 +136,8 @@ class BountyDashGame extends FlameGame
 
   void _onServerState(GameStateEntity state) {
     _interpolator.onNewState(state);
+    final world = _world;
+    if (world == null) return;
 
     // Update/add/remove components
     final currentIds = state.players.keys.toSet();
@@ -123,7 +150,7 @@ class BountyDashGame extends FlameGame
           final c = RunnerComponent(
               entity: p, isLocalPlayer: p.id == localPlayerId);
           _runners[p.id] = c;
-          _world.add(c);
+          world.add(c);
         }
       } else {
         if (_guards.containsKey(p.id)) {
@@ -132,7 +159,7 @@ class BountyDashGame extends FlameGame
           final c =
               GuardComponent(entity: p, isLocalPlayer: p.id == localPlayerId);
           _guards[p.id] = c;
-          _world.add(c);
+          world.add(c);
         }
       }
     }
@@ -152,7 +179,7 @@ class BountyDashGame extends FlameGame
       } else {
         final c = ArtifactComponent(entity: a);
         _artifacts[a.id] = c;
-        _world.add(c);
+        world.add(c);
       }
     }
 
@@ -186,9 +213,12 @@ class BountyDashGame extends FlameGame
     }
 
     // Lerp camera toward target (smooth follow, no snap)
-    final current = _camera.viewfinder.position;
-    _camera.viewfinder.position = current +
-        (_cameraTarget - current) * (_cameraLerpSpeed * dt).clamp(0.0, 1.0);
+    final cam = _camera;
+    if (cam != null) {
+      final current = cam.viewfinder.position;
+      cam.viewfinder.position = current +
+          (_cameraTarget - current) * (_cameraLerpSpeed * dt).clamp(0.0, 1.0);
+    }
 
     // ── Read raw input target ────────────────────────────────────────────────
     double targetDx = 0, targetDy = 0;
@@ -264,8 +294,9 @@ class BountyDashGame extends FlameGame
   void onMouseMove(Offset screenPos) {
     if (localRole != PlayerRole.guard) return;
     final localGuard = _guards[localPlayerId];
-    if (localGuard == null) return;
-    final worldPos = _camera.globalToLocal(screenPos.toVector2());
+    final cam = _camera;
+    if (localGuard == null || cam == null) return;
+    final worldPos = cam.globalToLocal(screenPos.toVector2());
     final gPos = localGuard.position;
     _facingAngle = math.atan2(worldPos.y - gPos.y, worldPos.x - gPos.x);
   }

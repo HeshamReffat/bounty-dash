@@ -52,7 +52,7 @@ class GameEngine {
     if (state.phase != GamePhase.playing) return state;
 
     _elapsedTicks++;
-    final secondsRemaining = math.max(0, 180 - (_elapsedTicks ~/ 20));
+    final secondsRemaining = math.max(0, 600 - (_elapsedTicks ~/ 20));
 
     var players = Map<String, PlayerEntity>.from(state.players);
     var artifacts = List<ArtifactEntity>.from(state.artifacts);

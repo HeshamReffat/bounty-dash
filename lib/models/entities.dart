@@ -137,7 +137,7 @@ class GameStateEntity extends Equatable {
     this.winner,
     this.winReason,
     this.tick = 0,
-    this.secondsRemaining = 180,
+    this.secondsRemaining = 600,
     this.maxTags = 2,
   });
 
