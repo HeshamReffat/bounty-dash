@@ -19,7 +19,7 @@ class HudComponent extends PositionComponent {
     required this.localRole,
   }) : super(priority: 10);
 
-  static final _bgPaint = Paint()..color = const Color(0xCC000000);
+  static final _bgPaint = Paint()..color = const Color(0x00000000);
   static final _heartFull = Paint()..color = const Color(0xFFE53935);
   static final _heartEmpty = Paint()..color = const Color(0xFF444444);
   static final _artifactFull = Paint()..color = const Color(0xFF00FFAA);
