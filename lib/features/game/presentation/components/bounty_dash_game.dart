@@ -51,6 +51,15 @@ class BountyDashGame extends FlameGame
   // Throttle: only send a move packet when the value actually changed
   double _lastDx = 0, _lastDy = 0, _lastAngle = 0;
 
+  // Input smoothing — ramp toward target instead of instant 0/1
+  double _smoothDx = 0, _smoothDy = 0;
+  static const double _accel = 6.0;  // ramp-up speed (units/sec toward 1.0)
+  static const double _decel = 8.0;  // ramp-down speed (units/sec toward 0.0)
+
+  // Throttle sends to match server tick rate (~20Hz = 50ms)
+  double _sendAccum = 0;
+  static const double _sendInterval = 0.05; // seconds between input packets
+
   BountyDashGame({
     required this.localPlayerId,
     required this.localRole,
@@ -181,51 +190,60 @@ class BountyDashGame extends FlameGame
     _camera.viewfinder.position = current +
         (_cameraTarget - current) * (_cameraLerpSpeed * dt).clamp(0.0, 1.0);
 
-    // ── Read input ─────────────────────────────────────────────────────────
-    double dx = 0, dy = 0;
-    bool forceMove = false; // true while joystick is actively held
+    // ── Read raw input target ────────────────────────────────────────────────
+    double targetDx = 0, targetDy = 0;
 
     if (_joystick != null) {
       // delta is in pixels; background radius = 60 → gives clean -1..1 range.
-      dx = (_joystick!.delta.x / 60).clamp(-1.0, 1.0);
-      dy = (_joystick!.delta.y / 60).clamp(-1.0, 1.0);
-      if (dx.abs() > 0.05 || dy.abs() > 0.05) {
-        _facingAngle = math.atan2(dy, dx);
-        forceMove = true; // always send while stick is deflected
-      }
+      targetDx = (_joystick!.delta.x / 60).clamp(-1.0, 1.0);
+      targetDy = (_joystick!.delta.y / 60).clamp(-1.0, 1.0);
     } else {
       if (_keysDown.contains(LogicalKeyboardKey.keyW) ||
-          _keysDown.contains(LogicalKeyboardKey.arrowUp)) { dy = -1; }
+          _keysDown.contains(LogicalKeyboardKey.arrowUp)) { targetDy = -1; }
       if (_keysDown.contains(LogicalKeyboardKey.keyS) ||
-          _keysDown.contains(LogicalKeyboardKey.arrowDown)) { dy = 1; }
+          _keysDown.contains(LogicalKeyboardKey.arrowDown)) { targetDy = 1; }
       if (_keysDown.contains(LogicalKeyboardKey.keyA) ||
-          _keysDown.contains(LogicalKeyboardKey.arrowLeft)) { dx = -1; }
+          _keysDown.contains(LogicalKeyboardKey.arrowLeft)) { targetDx = -1; }
       if (_keysDown.contains(LogicalKeyboardKey.keyD) ||
-          _keysDown.contains(LogicalKeyboardKey.arrowRight)) { dx = 1; }
-      if (dx != 0 || dy != 0) forceMove = true;
+          _keysDown.contains(LogicalKeyboardKey.arrowRight)) { targetDx = 1; }
 
       if (_keysDown.contains(LogicalKeyboardKey.space)) {
-        if (localRole == PlayerRole.guard) bloc.sendTagImmediate();
-        if (localRole == PlayerRole.runner) bloc.sendCollectImmediate();
+        if (localRole == PlayerRole.guard) { bloc.sendTagImmediate(); }
+        if (localRole == PlayerRole.runner) { bloc.sendCollectImmediate(); }
       }
     }
 
-    // Send every frame while moving (guarantees server gets continuous input).
-    // For idle guards, throttle angle updates to avoid spamming.
-    final angleChanged = (localRole == PlayerRole.guard) &&
-        (_facingAngle - _lastAngle).abs() > 0.01;
+    // ── Smooth ramp toward target (acceleration / deceleration) ────────────
+    _smoothDx = _ramp(_smoothDx, targetDx, dt);
+    _smoothDy = _ramp(_smoothDy, targetDy, dt);
 
-    if (forceMove || angleChanged) {
-      bloc.sendMoveImmediate(dx: dx, dy: dy, angle: _facingAngle);
-      _lastDx = dx;
-      _lastDy = dy;
-      _lastAngle = _facingAngle;
-    } else if (dx == 0 && dy == 0 && (_lastDx != 0 || _lastDy != 0)) {
-      // Send one final zero-input packet when the player stops moving,
-      // so the server knows to stop the entity.
-      bloc.sendMoveImmediate(dx: 0, dy: 0, angle: _facingAngle);
-      _lastDx = 0;
-      _lastDy = 0;
+    // Update facing angle from smoothed direction
+    if (_smoothDx.abs() > 0.05 || _smoothDy.abs() > 0.05) {
+      _facingAngle = math.atan2(_smoothDy, _smoothDx);
+    }
+
+    // ── Throttle sends to server tick rate (20Hz) ──────────────────────────
+    _sendAccum += dt;
+    if (_sendAccum >= _sendInterval) {
+      _sendAccum -= _sendInterval;
+
+      final dx = _smoothDx;
+      final dy = _smoothDy;
+      final isMoving = dx.abs() > 0.02 || dy.abs() > 0.02;
+      final angleChanged = (localRole == PlayerRole.guard) &&
+          (_facingAngle - _lastAngle).abs() > 0.01;
+
+      if (isMoving || angleChanged) {
+        bloc.sendMoveImmediate(dx: dx, dy: dy, angle: _facingAngle);
+        _lastDx = dx;
+        _lastDy = dy;
+        _lastAngle = _facingAngle;
+      } else if (_lastDx != 0 || _lastDy != 0) {
+        // Send one final zero-input packet when the player stops moving.
+        bloc.sendMoveImmediate(dx: 0, dy: 0, angle: _facingAngle);
+        _lastDx = 0;
+        _lastDy = 0;
+      }
     }
   }
 
@@ -255,6 +273,17 @@ class BountyDashGame extends FlameGame
   // ── Tap passthrough ───────────────────────────────────────────────────────
   @override
   void onTapDown(TapDownEvent event) {}
+
+  /// Smoothly ramp [current] toward [target] using acceleration/deceleration.
+  double _ramp(double current, double target, double dt) {
+    if ((target - current).abs() < 0.01) return target;
+    final rate = target.abs() >= current.abs() ? _accel : _decel;
+    if (current < target) {
+      return (current + rate * dt).clamp(current, target);
+    } else {
+      return (current - rate * dt).clamp(target, current);
+    }
+  }
 
   @override
   void onDetach() {

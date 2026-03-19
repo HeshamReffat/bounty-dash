@@ -35,7 +35,8 @@ class _GameOverView extends StatelessWidget {
 
         return Scaffold(
           backgroundColor: const Color(0xFF12121E),
-          body: Center(
+          body: SafeArea(
+            child: Center(
             child: Padding(
               padding: const EdgeInsets.all(20.0),
               child: Container(
@@ -82,7 +83,7 @@ class _GameOverView extends StatelessWidget {
                       _StatRow(
                           icon: '🎯',
                           label: 'Tags Made',
-                          value: '${r.tagsMade}/2'),
+                          value: '${r.tagsMade}/${r.maxTags}'),
                       const SizedBox(height: 36),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -105,6 +106,7 @@ class _GameOverView extends StatelessWidget {
                 ),
               ),
             ),
+          ),
           ),
         );
       },

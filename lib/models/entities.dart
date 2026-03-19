@@ -128,6 +128,7 @@ class GameStateEntity extends Equatable {
   final String? winReason;
   final int tick;
   final int secondsRemaining;
+  final int maxTags;
 
   const GameStateEntity({
     required this.phase,
@@ -137,6 +138,7 @@ class GameStateEntity extends Equatable {
     this.winReason,
     this.tick = 0,
     this.secondsRemaining = 180,
+    this.maxTags = 2,
   });
 
   factory GameStateEntity.fromJson(Map<String, dynamic> j) => GameStateEntity(
@@ -151,11 +153,12 @@ class GameStateEntity extends Equatable {
         winReason: j['winReason'] as String?,
         tick: j['tick'] as int? ?? 0,
         secondsRemaining: j['secondsRemaining'] as int? ?? 180,
+        maxTags: j['maxTags'] as int? ?? 2,
       );
 
   @override
   List<Object?> get props =>
-      [phase, players, artifacts, winner, winReason, tick, secondsRemaining];
+      [phase, players, artifacts, winner, winReason, tick, secondsRemaining, maxTags];
 }
 
 class GameResultEntity extends Equatable {
@@ -164,6 +167,7 @@ class GameResultEntity extends Equatable {
   final int secondsSurvived;
   final int artifactsCollected;
   final int tagsMade;
+  final int maxTags;
 
   const GameResultEntity({
     required this.winner,
@@ -171,6 +175,7 @@ class GameResultEntity extends Equatable {
     required this.secondsSurvived,
     required this.artifactsCollected,
     required this.tagsMade,
+    this.maxTags = 2,
   });
 
   factory GameResultEntity.fromJson(Map<String, dynamic> j) => GameResultEntity(
@@ -179,6 +184,7 @@ class GameResultEntity extends Equatable {
         secondsSurvived: j['secondsSurvived'] as int? ?? 0,
         artifactsCollected: j['artifactsCollected'] as int? ?? 0,
         tagsMade: j['tagsMade'] as int? ?? 0,
+        maxTags: j['maxTags'] as int? ?? 2,
       );
 
   Map<String, dynamic> toJson() => {
@@ -187,11 +193,12 @@ class GameResultEntity extends Equatable {
         'secondsSurvived': secondsSurvived,
         'artifactsCollected': artifactsCollected,
         'tagsMade': tagsMade,
+        'maxTags': maxTags,
       };
 
   @override
   List<Object?> get props =>
-      [winner, reason, secondsSurvived, artifactsCollected, tagsMade];
+      [winner, reason, secondsSurvived, artifactsCollected, tagsMade, maxTags];
 }
 
 class LobbyPlayerInfo extends Equatable {

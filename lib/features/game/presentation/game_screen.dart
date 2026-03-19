@@ -56,21 +56,23 @@ class _GameScreenState extends State<GameScreen> {
         },
         child: Scaffold(
           backgroundColor: Colors.black,
-          body: MouseRegion(
-            onHover: (event) => _flameGame.onMouseMove(event.localPosition),
-            child: Stack(
-              children: [
-                GameWidget(game: _flameGame),
-                Positioned(
-                  right: 24,
-                  bottom: 120,
-                  child: _ActionButtons(
-                    role: widget.localRole,
-                    onCollect: () => _bloc.sendCollectImmediate(),
-                    onTag: () => _bloc.sendTagImmediate(),
+          body: SafeArea(
+            child: MouseRegion(
+              onHover: (event) => _flameGame.onMouseMove(event.localPosition),
+              child: Stack(
+                children: [
+                  GameWidget(game: _flameGame),
+                  Positioned(
+                    right: 24,
+                    bottom: 120,
+                    child: _ActionButtons(
+                      role: widget.localRole,
+                      onCollect: () => _bloc.sendCollectImmediate(),
+                      onTag: () => _bloc.sendTagImmediate(),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

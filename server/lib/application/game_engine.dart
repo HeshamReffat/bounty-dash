@@ -5,8 +5,8 @@ import '../domain/visibility_engine.dart';
 import '../domain/tag_system.dart';
 import '../domain/artifact_system.dart';
 
-const double kRunnerSpeed = 4.0; // tiles/sec
-const double kGuardSpeed  = 2.5; // tiles/sec
+const double kRunnerSpeed = 3.0; // tiles/sec
+const double kGuardSpeed  = 2.0; // tiles/sec
 const double kTickRate    = 1 / 20; // 50 ms per tick
 
 /// Input snapshot received from a client each tick.
@@ -40,11 +40,12 @@ class PlayerInput {
 /// Core authoritative game engine — pure application logic.
 class GameEngine {
   GameStateEntity state;
+  final int maxTags;
   // Track previous positions to detect movement
   final Map<String, Vec2> _prevPositions = {};
   int _elapsedTicks = 0;
 
-  GameEngine(this.state);
+  GameEngine(this.state, {this.maxTags = 2});
 
   /// Process one tick worth of inputs and return the new [GameStateEntity].
   GameStateEntity tick(List<PlayerInput> inputs) {
@@ -56,8 +57,21 @@ class GameEngine {
     var players = Map<String, PlayerEntity>.from(state.players);
     var artifacts = List<ArtifactEntity>.from(state.artifacts);
 
-    // ── Move players ────────────────────────────────────────────────────────
+    // Deduplicate: keep only the last input per player per tick.
+    // This prevents speed multiplication when multiple packets arrive
+    // in one tick window (e.g. client sends at 60Hz, server ticks at 20Hz).
+    final deduped = <String, PlayerInput>{};
+    final actions = <PlayerInput>[]; // tag/collect are additive, keep all
     for (final input in inputs) {
+      if (input.tag || input.collect) {
+        actions.add(input);
+      } else {
+        deduped[input.playerId] = input; // last one wins
+      }
+    }
+
+    // ── Move players ────────────────────────────────────────────────────────
+    for (final input in deduped.values) {
       final player = players[input.playerId];
       if (player == null) continue;
 
@@ -69,8 +83,8 @@ class GameEngine {
       final ndx = len > 0 ? (rawDx / len) * speed * kTickRate : 0.0;
       final ndy = len > 0 ? (rawDy / len) * speed * kTickRate : 0.0;
 
-      final newX = (player.position.x + ndx).clamp(0.5, 29.5);
-      final newY = (player.position.y + ndy).clamp(0.5, 19.5);
+      final newX = (player.position.x + ndx).clamp(0.5, kMapCols - 0.5);
+      final newY = (player.position.y + ndy).clamp(0.5, kMapRows - 0.5);
 
       final candidate = Vec2(newX, newY);
       final resolved = _resolveCollision(player.position, candidate);
@@ -104,7 +118,7 @@ class GameEngine {
 
     // ── Process actions ──────────────────────────────────────────────────────
     var updatedRunner = runner;
-    for (final input in inputs) {
+    for (final input in actions) {
       final player = players[input.playerId];
       if (player == null) continue;
 
@@ -133,13 +147,13 @@ class GameEngine {
     players[updatedRunner.id] = updatedRunner;
 
     // ── Win conditions ───────────────────────────────────────────────────────
-    if (TagSystem.isGuardsWin(updatedRunner)) {
+    if (updatedRunner.tagCount >= maxTags) {
       return state.copyWith(
         players: players,
         artifacts: artifacts,
         phase: GamePhase.ended,
         winner: 'guards',
-        winReason: 'Runner tagged twice',
+        winReason: 'Runner tagged $maxTags times',
         tick: state.tick + 1,
         secondsRemaining: secondsRemaining,
       );

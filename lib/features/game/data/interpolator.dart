@@ -63,6 +63,7 @@ class Interpolator {
       winReason: _next!.winReason,
       tick: _next!.tick,
       secondsRemaining: _next!.secondsRemaining,
+      maxTags: _next!.maxTags,
     );
   }
 }

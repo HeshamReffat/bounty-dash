@@ -123,6 +123,7 @@ class GameStateEntity {
   final String? winReason;
   final int tick;
   final int secondsRemaining;
+  final int maxTags;
 
   const GameStateEntity({
     required this.phase,
@@ -132,6 +133,7 @@ class GameStateEntity {
     this.winReason,
     this.tick = 0,
     this.secondsRemaining = 180,
+    this.maxTags = 2,
   });
 
   GameStateEntity copyWith({
@@ -142,6 +144,7 @@ class GameStateEntity {
     String? winReason,
     int? tick,
     int? secondsRemaining,
+    int? maxTags,
   }) =>
       GameStateEntity(
         phase: phase ?? this.phase,
@@ -151,6 +154,7 @@ class GameStateEntity {
         winReason: winReason ?? this.winReason,
         tick: tick ?? this.tick,
         secondsRemaining: secondsRemaining ?? this.secondsRemaining,
+        maxTags: maxTags ?? this.maxTags,
       );
 
   Map<String, dynamic> toJson() => {
@@ -161,6 +165,7 @@ class GameStateEntity {
         'winReason': winReason,
         'tick': tick,
         'secondsRemaining': secondsRemaining,
+        'maxTags': maxTags,
       };
 }
 
@@ -170,6 +175,7 @@ class GameResultEntity {
   final int secondsSurvived;
   final int artifactsCollected;
   final int tagsMade;
+  final int maxTags;
 
   const GameResultEntity({
     required this.winner,
@@ -177,6 +183,7 @@ class GameResultEntity {
     required this.secondsSurvived,
     required this.artifactsCollected,
     required this.tagsMade,
+    this.maxTags = 2,
   });
 
   Map<String, dynamic> toJson() => {
@@ -185,6 +192,7 @@ class GameResultEntity {
         'secondsSurvived': secondsSurvived,
         'artifactsCollected': artifactsCollected,
         'tagsMade': tagsMade,
+        'maxTags': maxTags,
       };
 
   factory GameResultEntity.fromJson(Map<String, dynamic> j) => GameResultEntity(

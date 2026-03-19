@@ -8,8 +8,9 @@ class MainMenuScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF12121E),
-      body: Center(
-        child: SingleChildScrollView(
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -54,6 +55,7 @@ class MainMenuScreen extends StatelessWidget {
               ),
             ],
           ),
+        ),
         ),
       ),
     );

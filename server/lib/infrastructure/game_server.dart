@@ -131,8 +131,11 @@ class GameServer {
     final room = _lobby.getRoom(code)!;
     room.started = true;
 
-    // Build initial artifacts from map
-    final artifacts = kArtifactPositions
+    final playerCount = room.players.length;
+
+    // Randomly spawn 3 artifacts on floor tiles (never same spot twice)
+    final artifactSpots = randomArtifactPositions(3);
+    final artifacts = artifactSpots
         .asMap()
         .entries
         .map((e) => ArtifactEntity(
@@ -145,14 +148,19 @@ class GameServer {
       phase: GamePhase.playing,
       players: room.players,
       artifacts: artifacts,
+      maxTags: playerCount,
     );
 
-    _engines[code] = GameEngine(initialState);
+    // maxTags = number of players (2 players → 2 tags to win, 4 → 4)
+    _engines[code] = GameEngine(initialState, maxTags: playerCount);
     _inputBuffer[code] = [];
     _prevRunnerPos[code] = null;
 
-    // Broadcast game start
-    _broadcastToRoom(code, {'type': 'GAME_START'});
+    // Broadcast game start with dynamic maxTags so HUD can display it
+    _broadcastToRoom(code, {
+      'type': 'GAME_START',
+      'maxTags': playerCount,
+    });
 
     // 20 ticks/sec game loop
     _timers[code] = Timer.periodic(
@@ -186,6 +194,7 @@ class GameServer {
         secondsSurvived: 180 - newState.secondsRemaining,
         artifactsCollected: newState.artifacts.where((a) => a.isCollected).length,
         tagsMade: runner?.tagCount ?? 0,
+        maxTags: newState.maxTags,
       );
       _broadcastToRoom(code, {'type': 'GAME_OVER', 'result': result.toJson()});
       _lobby.closeRoom(code);
@@ -239,6 +248,7 @@ class GameServer {
             'artifacts': state.artifacts.map((a) => a.toJson()).toList(),
             'tick': state.tick,
             'secondsRemaining': state.secondsRemaining,
+            'maxTags': state.maxTags,
           },
         };
       } else {
@@ -292,6 +302,7 @@ class GameServer {
           artifactsCollected:
               newState.artifacts.where((a) => a.isCollected).length,
           tagsMade: runner?.tagCount ?? 0,
+          maxTags: newState.maxTags,
         );
 
         // Send GAME_OVER to all REMAINING players (room.players no longer

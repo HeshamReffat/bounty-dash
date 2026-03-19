@@ -101,9 +101,10 @@ class _LobbyScreenState extends State<LobbyScreen> {
         },
         child: Scaffold(
           backgroundColor: const Color(0xFF12121E),
-          body: Center(
-            child: SingleChildScrollView(
-              child: BlocBuilder<LobbyCubit, LobbyState>(
+          body: SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                child: BlocBuilder<LobbyCubit, LobbyState>(
                 builder: (context, state) {
                   final isLoading =
                       state is LobbyConnecting || state is LobbyIdle;
@@ -224,6 +225,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
               ),
             ),
           ),
+          ),
         ),
       ),
     );
@@ -255,8 +257,9 @@ class WaitingRoomScreen extends StatelessWidget {
         },
         child: Scaffold(
           backgroundColor: const Color(0xFF12121E),
-          body: Center(
-            child: BlocBuilder<LobbyCubit, LobbyState>(
+          body: SafeArea(
+            child: Center(
+              child: BlocBuilder<LobbyCubit, LobbyState>(
               builder: (context, state) {
                 if (state is! LobbyWaiting) {
                   return const CircularProgressIndicator(
@@ -345,6 +348,7 @@ class WaitingRoomScreen extends StatelessWidget {
                 );
               },
             ),
+          ),
           ),
         ),
       ),

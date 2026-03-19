@@ -57,10 +57,11 @@ class HudComponent extends PositionComponent {
     _drawCachedText(canvas, timeStr, Offset(_vpWidth / 2 - 16, 14),
         fontSize: 22, key: 'timer');
 
-    // Hearts
+    // Hearts (tag count — dynamic based on player count)
     final tagCount = runner?.tagCount ?? 0;
-    for (int i = 0; i < 2; i++) {
-      final filled = i < (2 - tagCount);
+    final maxTags = gameState!.maxTags;
+    for (int i = 0; i < maxTags; i++) {
+      final filled = i < (maxTags - tagCount);
       _drawHeart(canvas, Offset(16 + i * 32.0, 12), filled);
     }
 
